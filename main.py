@@ -5,10 +5,10 @@ from src.midline_ideal import estimate_ideal_midline
 from src.segmentation import segment_ventricles
 from src.midline_actual import estimate_actual_midline
 from src.mls_calculator import calculate_mls
-from src.visualization import save_overlay
+from src.visualisation import save_overlay
 
 # Paths
-dicom_folder = "data/raw/MLS/patient_1/brain"  # change to your path
+dicom_folder = dicom_folder = r"data\Normal\500261477\20210122\brain"
 output_folder = "data/outputs/patient_1"
 os.makedirs(output_folder, exist_ok=True)
 

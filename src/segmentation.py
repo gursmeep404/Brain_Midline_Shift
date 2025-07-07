@@ -1,3 +1,4 @@
+import cv2
 def segment_ventricles(slice_img):
     # Invert and threshold to get dark CSF/ventricles
     blurred = cv2.GaussianBlur(slice_img, (5, 5), 0)
