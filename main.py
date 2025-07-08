@@ -8,7 +8,7 @@ from src.mls_calculator import calculate_mls
 from src.visualisation import save_overlay
 
 # Paths
-dicom_folder = dicom_folder = r"data\Normal\500261477\20210122\brain"
+dicom_folder = dicom_folder = r"data\Normal\105325641\20210122\brain"
 output_folder = "data/outputs/patient_1"
 os.makedirs(output_folder, exist_ok=True)
 
