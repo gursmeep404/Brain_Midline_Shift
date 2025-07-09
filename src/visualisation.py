@@ -1,12 +1,21 @@
-import matplotlib.pyplot as plt
-import os
 import cv2
+import numpy as np
 
-def save_overlay(slice_img, ideal_x, actual_x, save_path):
-    img_rgb = cv2.cvtColor(slice_img, cv2.COLOR_GRAY2BGR)
-    h = slice_img.shape[0]
-    if ideal_x is not None:
-        cv2.line(img_rgb, (ideal_x, 0), (ideal_x, h), (0, 255, 0), 1)
-    if actual_x is not None:
-        cv2.line(img_rgb, (actual_x, 0), (actual_x, h), (0, 0, 255), 1)
-    cv2.imwrite(save_path, img_rgb)
+def save_overlay_rotated_midline(slice_gray, center_of_mass, angle, output_path, color=(0, 255, 0)):
+    """
+    Draw the tilted ideal midline based on rotation angle and center of mass.
+    """
+    h, w = slice_gray.shape
+    img = cv2.cvtColor(slice_gray, cv2.COLOR_GRAY2BGR)
+
+    theta = np.deg2rad(angle)
+    dx = int(np.sin(theta) * h)
+    dy = int(np.cos(theta) * h)
+
+    x0 = int(center_of_mass[0] - dx // 2)
+    y0 = int(center_of_mass[1] - dy // 2)
+    x1 = int(center_of_mass[0] + dx // 2)
+    y1 = int(center_of_mass[1] + dy // 2)
+
+    cv2.line(img, (x0, y0), (x1, y1), color, 1)
+    cv2.imwrite(output_path, img)
