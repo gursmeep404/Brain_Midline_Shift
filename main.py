@@ -5,7 +5,8 @@ from src.midline_ideal import estimate_ideal_midline
 from src.segmentation import segment_ventricles
 from src.midline_actual import estimate_actual_midline
 from src.mls_calculator import calculate_mls
-from src.visualisation import save_overlay_rotated_midline
+from src.visualisation import save_side_by_side_midline_visual
+
 
 dicom_folder = r"data\Normal\105325641\20210122\brain"
 output_folder = "data/outputs/patient_1"
@@ -41,7 +42,14 @@ for i in range(len(hu_volume)):
     # --- Save overlay for visualization ---
     # from src.visualisation import save_overlay_symmetry_only
 
-    save_overlay_rotated_midline(slice_vis, center_of_mass, angle, os.path.join(output_folder, f"symmetry_{i:02d}.png"))
+   
+    save_side_by_side_midline_visual(
+        slice_vis,
+        center_of_mass=center_of_mass,
+        angle=angle,
+        output_path=os.path.join(output_folder, f"symmetry_pair_{i:02d}.png")
+    )
+
 
 
 
