@@ -1,3 +1,5 @@
 venv/
 .venv/
 data/
+outputs/
+debug_masks/
