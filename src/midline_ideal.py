@@ -1,45 +1,44 @@
-# midline_ideal.py
 import numpy as np
 import cv2
 import SimpleITK as sitk
 
 
-def register_ct_to_atlas(dicom_folder, atlas_path):
-    reader = sitk.ImageSeriesReader()
-    series_IDs = reader.GetGDCMSeriesIDs(dicom_folder)
-    if not series_IDs:
-        raise ValueError(f"No DICOM series found in {dicom_folder}")
-    dicom_filenames = reader.GetGDCMSeriesFileNames(dicom_folder, series_IDs[0])
-    reader.SetFileNames(dicom_filenames)
-    ct_image = reader.Execute()
+# def register_ct_to_atlas(dicom_folder, atlas_path):
+#     reader = sitk.ImageSeriesReader()
+#     series_IDs = reader.GetGDCMSeriesIDs(dicom_folder)
+#     if not series_IDs:
+#         raise ValueError(f"No DICOM series found in {dicom_folder}")
+#     dicom_filenames = reader.GetGDCMSeriesFileNames(dicom_folder, series_IDs[0])
+#     reader.SetFileNames(dicom_filenames)
+#     ct_image = reader.Execute()
 
-    atlas_image = sitk.ReadImage(atlas_path)
-    atlas_image = sitk.Cast(atlas_image, sitk.sitkFloat32)
-    ct_image = sitk.Cast(ct_image, sitk.sitkFloat32)
+#     atlas_image = sitk.ReadImage(atlas_path)
+#     atlas_image = sitk.Cast(atlas_image, sitk.sitkFloat32)
+#     ct_image = sitk.Cast(ct_image, sitk.sitkFloat32)
 
-    transform = sitk.CenteredTransformInitializer(
-        atlas_image,
-        ct_image,
-        sitk.Euler3DTransform(),
-        sitk.CenteredTransformInitializerFilter.GEOMETRY
-    )
+#     transform = sitk.CenteredTransformInitializer(
+#         atlas_image,
+#         ct_image,
+#         sitk.Euler3DTransform(),
+#         sitk.CenteredTransformInitializerFilter.GEOMETRY
+#     )
 
-    registration_method = sitk.ImageRegistrationMethod()
-    registration_method.SetMetricAsMattesMutualInformation(50)
-    registration_method.SetOptimizerAsRegularStepGradientDescent(1.0, 0.001, 100)
-    registration_method.SetInterpolator(sitk.sitkLinear)
-    registration_method.SetInitialTransform(transform, inPlace=False)
-    final_transform = registration_method.Execute(atlas_image, ct_image)
+#     registration_method = sitk.ImageRegistrationMethod()
+#     registration_method.SetMetricAsMattesMutualInformation(50)
+#     registration_method.SetOptimizerAsRegularStepGradientDescent(1.0, 0.001, 100)
+#     registration_method.SetInterpolator(sitk.sitkLinear)
+#     registration_method.SetInitialTransform(transform, inPlace=False)
+#     final_transform = registration_method.Execute(atlas_image, ct_image)
 
-    resampled = sitk.Resample(
-        ct_image,
-        atlas_image,
-        final_transform,
-        sitk.sitkLinear,
-        0.0,
-        ct_image.GetPixelID()
-    )
-    return sitk.GetArrayFromImage(resampled)
+#     resampled = sitk.Resample(
+#         ct_image,
+#         atlas_image,
+#         final_transform,
+#         sitk.sitkLinear,
+#         0.0,
+#         ct_image.GetPixelID()
+#     )
+#     return sitk.GetArrayFromImage(resampled)
 
 
 def segment_skull(slice_hu, hu_threshold=(100, 2000)):

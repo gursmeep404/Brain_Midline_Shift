@@ -3,3 +3,4 @@ venv/
 data/
 outputs/
 debug_masks/
+registered_nifti_files/
