@@ -1,143 +1,81 @@
+import os
 import numpy as np
-import cv2
 import SimpleITK as sitk
+import cv2
+from scipy import ndimage
 
+def compute_midlines(nifti_path, output_dir,
+                     hu_min=-5, hu_max=75,
+                     roi_height=50, roi_width=40,
+                     canny_thresh_low=50, canny_thresh_high=150):
+    os.makedirs(output_dir, exist_ok=True)
 
-# def register_ct_to_atlas(dicom_folder, atlas_path):
-#     reader = sitk.ImageSeriesReader()
-#     series_IDs = reader.GetGDCMSeriesIDs(dicom_folder)
-#     if not series_IDs:
-#         raise ValueError(f"No DICOM series found in {dicom_folder}")
-#     dicom_filenames = reader.GetGDCMSeriesFileNames(dicom_folder, series_IDs[0])
-#     reader.SetFileNames(dicom_filenames)
-#     ct_image = reader.Execute()
+    ct_img = sitk.ReadImage(nifti_path)
+    ct_np = sitk.GetArrayFromImage(ct_img)
+    spacing = ct_img.GetSpacing()
+    origin = ct_img.GetOrigin()
+    direction = ct_img.GetDirection()
 
-#     atlas_image = sitk.ReadImage(atlas_path)
-#     atlas_image = sitk.Cast(atlas_image, sitk.sitkFloat32)
-#     ct_image = sitk.Cast(ct_image, sitk.sitkFloat32)
+    midline_mask_initial = np.zeros_like(ct_np, dtype=np.uint8)
+    midline_mask_adjusted = np.zeros_like(ct_np, dtype=np.uint8)
+    slice_data_list = []
 
-#     transform = sitk.CenteredTransformInitializer(
-#         atlas_image,
-#         ct_image,
-#         sitk.Euler3DTransform(),
-#         sitk.CenteredTransformInitializerFilter.GEOMETRY
-#     )
+    def detect_midline_x(roi, x_offset):
+        edges = cv2.Canny(roi, canny_thresh_low, canny_thresh_high)
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=20,
+                                minLineLength=10, maxLineGap=5)
+        x_coords = []
+        if lines is not None:
+            for line in lines:
+                x1_, y1_, x2_, y2_ = line[0]
+                if abs(x1_ - x2_) < 5:  # vertical-ish
+                    x_mid = (x1_ + x2_) // 2
+                    x_coords.append(x_mid + x_offset)
+        return int(np.mean(x_coords)) if x_coords else None
 
-#     registration_method = sitk.ImageRegistrationMethod()
-#     registration_method.SetMetricAsMattesMutualInformation(50)
-#     registration_method.SetOptimizerAsRegularStepGradientDescent(1.0, 0.001, 100)
-#     registration_method.SetInterpolator(sitk.sitkLinear)
-#     registration_method.SetInitialTransform(transform, inPlace=False)
-#     final_transform = registration_method.Execute(atlas_image, ct_image)
+    for i in range(ct_np.shape[0]):
+        slice_hu = ct_np[i]
+        bone_mask = ((slice_hu >= 300) & (slice_hu <= 2000)).astype(np.uint8)
 
-#     resampled = sitk.Resample(
-#         ct_image,
-#         atlas_image,
-#         final_transform,
-#         sitk.sitkLinear,
-#         0.0,
-#         ct_image.GetPixelID()
-#     )
-#     return sitk.GetArrayFromImage(resampled)
+        if np.sum(bone_mask) < 1000:
+            continue
 
+        _, initial_x = ndimage.center_of_mass(bone_mask)
+        initial_x = int(initial_x)
 
-def segment_skull(slice_hu, hu_threshold=(100, 2000)):
-    mask = ((slice_hu > hu_threshold[0]) & (slice_hu < hu_threshold[1])).astype(np.uint8)
-    mask = cv2.medianBlur(mask, 3)
-    return mask
+        gray = np.clip(slice_hu, hu_min, hu_max)
+        gray_norm = ((gray - hu_min) / (hu_max - hu_min) * 255).astype(np.uint8)
 
+        h, w = gray_norm.shape
+        x1 = max(0, initial_x - roi_width)
+        x2 = min(w, initial_x + roi_width)
 
-def estimate_midline_from_com(mask):
-    y, x = np.nonzero(mask)
-    if len(x) == 0:
-        print("Warning: empty mask.")
-        return mask.shape[1] // 2  # fallback
-    return int(np.mean(x))
+        top_roi = gray_norm[0:roi_height, x1:x2]
+        bot_roi = gray_norm[-roi_height:, x1:x2]
 
+        top_x = detect_midline_x(top_roi, x1)
+        bot_x = detect_midline_x(bot_roi, x1)
 
-# def refine_midline_with_anatomy(slice_hu, ideal_x, band=20, return_debug=False):
-#     h, w = slice_hu.shape
-#     bone_mask = (slice_hu > 100).astype(np.uint8)
-#     y_coords, _ = np.nonzero(bone_mask)
+        adjusted_x = int(np.mean([x for x in [top_x, bot_x] if x is not None])) if (top_x or bot_x) else initial_x
 
-#     if len(y_coords) > 0:
-#         top = np.min(y_coords)
-#         bottom = np.max(y_coords)
-#         upper_y_range = (max(0, top + 5), min(h, top + 60))
-#         lower_y_range = (max(0, bottom - 60), min(h, bottom - 5))
-#     else:
-#         upper_y_range = (20, 80)
-#         lower_y_range = (h - 100, h)
+        midline_mask_initial[i, :, initial_x] = 1
+        midline_mask_adjusted[i, :, adjusted_x] = 1
 
-#     x0 = max(0, ideal_x - band)
-#     x1 = min(w, ideal_x + band)
-#     upper_roi = slice_hu[upper_y_range[0]:upper_y_range[1], x0:x1]
-#     lower_roi = slice_hu[lower_y_range[0]:lower_y_range[1], x0:x1]
+        slice_data_list.append({
+            'index': i,
+            'image': gray_norm,
+            'initial_x': initial_x,
+            'adjusted_x': adjusted_x
+        })
 
-#     def normalize_roi(roi, min_hu=-100, max_hu=300):
-#         roi = np.clip(roi, min_hu, max_hu)
-#         return ((roi - min_hu) / (max_hu - min_hu) * 255).astype(np.uint8)
+    mask_init = sitk.GetImageFromArray(midline_mask_initial)
+    mask_adj = sitk.GetImageFromArray(midline_mask_adjusted)
+    for img in [mask_init, mask_adj]:
+        img.SetSpacing(spacing)
+        img.SetOrigin(origin)
+        img.SetDirection(direction)
 
-#     upper_roi_norm = normalize_roi(upper_roi)
-#     lower_roi_norm = normalize_roi(lower_roi)
-#     edges_upper = cv2.Canny(upper_roi_norm, 50, 150)
-#     edges_lower = cv2.Canny(lower_roi_norm, 50, 150)
+    sitk.WriteImage(mask_init, os.path.join(output_dir, "midline_center_of_mass.nii.gz"))
+    sitk.WriteImage(mask_adj, os.path.join(output_dir, "midline_adjusted.nii.gz"))
 
-#     def get_vertical_lines(edge_img, roi_origin_x, angle_thresh=np.deg2rad(10)):
-#         lines = cv2.HoughLines(edge_img, rho=1, theta=np.pi / 180, threshold=20)
-#         x_positions = []
-#         if lines is not None:
-#             for line in lines:
-#                 rho, theta = line[0]
-#                 if abs(theta - np.pi/2) < angle_thresh:
-#                     x = int(rho / np.cos(theta)) + roi_origin_x
-#                     if 0 <= x < w:
-#                         x_positions.append(x)
-#         return x_positions
-
-#     upper_lines = get_vertical_lines(edges_upper, x0, np.deg2rad(10))
-#     lower_lines = get_vertical_lines(edges_lower, x0, np.deg2rad(15))
-
-#     def detect_anterior_skull_point(bone_mask):
-#         for y in range(0, h // 4):
-#             row = bone_mask[y]
-#             x_indices = np.where(row > 0)[0]
-#             if len(x_indices) > 0:
-#                 return x_indices[len(x_indices) // 2]
-#         return None
-
-#     anterior_x = detect_anterior_skull_point(bone_mask)
-
-#     anchors = [ideal_x]
-#     weights = [1.0]
-
-#     if anterior_x is not None:
-#         anchors.append(anterior_x)
-#         weights.append(1.5)
-
-#     for x in upper_lines:
-#         anchors.append(x)
-#         weights.append(2.0)
-
-#     for x in lower_lines:
-#         anchors.append(x)
-#         weights.append(1.0)
-
-#     refined_x = int(np.average(anchors, weights=weights)) if len(anchors) > 0 else ideal_x
-
-#     if return_debug:
-#         debug = {
-#             'edges_upper': edges_upper,
-#             'edges_lower': edges_lower,
-#             'upper_y_range': upper_y_range,
-#             'lower_y_range': lower_y_range,
-#             'band': band,
-#             'anterior_x': anterior_x,
-#             'upper_lines': upper_lines,
-#             'lower_lines': lower_lines,
-#             'anchors': anchors,
-#             'weights': weights
-#         }
-#         return refined_x, debug
-#     else:
-#         return refined_x
+    return slice_data_list, ct_img
