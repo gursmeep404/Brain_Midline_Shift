@@ -1,4 +1,3 @@
-# main.py
 import os
 import numpy as np
 from src.preprocessing import normalize_volume
