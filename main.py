@@ -2,7 +2,7 @@ from src.midline_ideal import compute_midlines
 from src.visualisation import save_visualizations
 from src.segmentation import segment_volume_threshold
 from src.preprocessing import preprocess_dicom
-from src.midline_actual import estimate_actual_midline
+from src.midline_actual import estimate_actual_midline, is_valid_ventricle_slice
 import SimpleITK as sitk
 import numpy as np
 import os
@@ -59,17 +59,16 @@ print("Calculating actual midline...")
 
 midline_masks = np.zeros_like(ventricle_masks, dtype=np.uint8)
 
+print("Estimating actual midline from segmented ventricles...")
 for i in range(ventricle_masks.shape[0]):
-    vent_slice = ventricle_masks[i]
-    midline = estimate_actual_midline(vent_slice)
-    midline_masks[i] = midline
+    vent_mask = ventricle_masks[i]
+    if is_valid_ventricle_slice(vent_mask):
+        midline_masks[i] = estimate_actual_midline(vent_mask)
 
-
-mid_img = sitk.GetImageFromArray(midline_masks)
-mid_img.CopyInformation(ref_img)
-
-sitk.WriteImage(mid_img, os.path.join(OUTPUT_DIR, "actual_midline_mask.nii.gz"))
-
+# Save to NIfTI
+midline_img = sitk.GetImageFromArray(midline_masks)
+midline_img.CopyInformation(ref_img)
+sitk.WriteImage(midline_img, os.path.join(OUTPUT_DIR, "actual_midline_mask.nii.gz"))
 print("Saved actual midline mask to NIfTI.")
 
 
