@@ -1,11 +1,9 @@
 import numpy as np
 import cv2
 
+#  Segment ventricular regions based on HU range. Returns a binary 2D mask.
 def segment_ventricles(slice_img, hu_low=-5, hu_high=20, min_area=100):
-    """
-    Segment ventricular regions based on HU range.
-    Returns a binary 2D mask.
-    """
+
     # 1. Threshold to isolate CSF-like HU range
     mask = np.logical_and(slice_img >= hu_low, slice_img <= hu_high).astype(np.uint8) * 255
 
@@ -22,12 +20,9 @@ def segment_ventricles(slice_img, hu_low=-5, hu_high=20, min_area=100):
 
     return filtered_mask
 
-
+#   Loop over slices in the 3D volume and apply segmentation. Returns a 3D binary mask with the same shape.
 def segment_volume_threshold(volume, hu_low=-5, hu_high=20, min_area=100):
-    """
-    Loop over slices in the 3D volume and apply segmentation.
-    Returns a 3D binary mask with the same shape.
-    """
+    
     masks = np.zeros_like(volume, dtype=np.uint8)
     for i in range(volume.shape[0]):
         masks[i] = segment_ventricles(volume[i], hu_low=hu_low, hu_high=hu_high, min_area=min_area)

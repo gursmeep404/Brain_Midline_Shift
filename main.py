@@ -2,14 +2,14 @@ from src.midline_ideal import compute_midlines
 from src.visualisation import save_visualizations
 from src.segmentation import segment_volume_threshold
 from src.preprocessing import preprocess_dicom
-from src.midline_actual import estimate_actual_midline, is_valid_ventricle_slice
+from src.midline_actual import estimate_actual_midline_mask
 import SimpleITK as sitk
 import numpy as np
 import os
 
 
 USE_NIFTI = True  # Set to False to use DICOM
-OUTPUT_DIR = "outputs/ventricles3"
+OUTPUT_DIR = "outputs/ventricles5"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 WINDOW_CENTER = 35
@@ -55,21 +55,19 @@ else:
 print("Segmenting ventricles using thresholding...")
 ventricle_masks = segment_volume_threshold(volume)
 
-print("Calculating actual midline...")
 
-midline_masks = np.zeros_like(ventricle_masks, dtype=np.uint8)
+TEMPLATE_DIR = "ventricle_templates"  # Replace with your actual template folder path
 
-print("Estimating actual midline from segmented ventricles...")
-for i in range(ventricle_masks.shape[0]):
-    vent_mask = ventricle_masks[i]
-    if is_valid_ventricle_slice(vent_mask):
-        midline_masks[i] = estimate_actual_midline(vent_mask)
+print("Estimating actual midline using template-matching...")
+
+midline_masks = estimate_actual_midline_mask(ventricle_masks, TEMPLATE_DIR)
 
 # Save to NIfTI
-midline_img = sitk.GetImageFromArray(midline_masks)
+midline_img = sitk.GetImageFromArray(midline_masks.astype(np.uint8))
 midline_img.CopyInformation(ref_img)
 sitk.WriteImage(midline_img, os.path.join(OUTPUT_DIR, "actual_midline_mask.nii.gz"))
 print("Saved actual midline mask to NIfTI.")
+
 
 
 print("Saving slice visualizations...")
