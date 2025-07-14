@@ -3,9 +3,9 @@ import numpy as np
 import pydicom
 from collections import defaultdict
 from skimage.transform import resize
+from scipy.ndimage import gaussian_filter
 
 def load_dicom_series(dicom_folder):
-   
     series_dict = defaultdict(list)
     for f in os.listdir(dicom_folder):
         if not f.lower().endswith(".dcm"):
@@ -21,11 +21,10 @@ def load_dicom_series(dicom_folder):
     if not series_dict:
         raise ValueError("No valid DICOM series found.")
 
-    # Choose the series with the most slices
     best_series = max(series_dict.values(), key=len)
     print(f"Selected series with {len(best_series)} slices")
 
-    # Sort slices by Z-location or InstanceNumber
+    # Sort slices by position or instance number
     try:
         best_series.sort(key=lambda d: float(d.ImagePositionPatient[2]))
     except:
@@ -42,11 +41,51 @@ def load_dicom_series(dicom_folder):
     volume = np.stack(slices, axis=0)
     return volume
 
+# Skull stripping by removing high HU values 
+def skull_strip(volume, hu_threshold=300):
+    stripped = np.copy(volume)
+    stripped[volume > hu_threshold] = 0
+    return stripped
 
-# Convert HU volume to 8-bit grayscale by clipping and scaling.
-def normalize_volume(volume, min_hu=-100, max_hu=100):
-
-    volume = np.clip(volume, min_hu, max_hu)
-    norm_volume = ((volume - min_hu) / (max_hu - min_hu) * 255).astype(np.uint8)
+# Normalize and convert HU volume to 8-bit grayscale
+def normalize_volume(volume, hu_min=0, hu_max=80):
+    volume = np.clip(volume, hu_min, hu_max)
+    norm_volume = ((volume - hu_min) / (hu_max - hu_min) * 255).astype(np.uint8)
     return norm_volume
 
+# Resize volume to uniform shape (e.g., 256x256 per slice)
+def resize_volume(volume, output_shape=(256, 256)):
+    resized_slices = [resize(slice, output_shape, mode='constant', preserve_range=True).astype(np.uint8)
+                      for slice in volume]
+    return np.stack(resized_slices, axis=0)
+
+# Apply Gaussian filter to reduce noise
+def apply_smoothing(volume, sigma=1.0):
+    return gaussian_filter(volume, sigma=(0, 1, 1))  # smooth x and y only, not z
+
+# Full preprocessing pipeline
+def preprocess_dicom(dicom_folder,
+                     hu_min=0,
+                     hu_max=80,
+                     resize_shape=(256, 256),
+                     smooth_sigma=None):
+    
+    print("Loading DICOM series...")
+    volume = load_dicom_series(dicom_folder)
+
+    print("Skull stripping...")
+    stripped_volume = skull_strip(volume)
+
+    print(f"Normalizing HU to grayscale (HU range {hu_min}-{hu_max})...")
+    norm_volume = normalize_volume(stripped_volume, hu_min=hu_min, hu_max=hu_max)
+
+    if resize_shape:
+        print(f"Resizing to shape {resize_shape}...")
+        norm_volume = resize_volume(norm_volume, resize_shape)
+
+    if smooth_sigma:
+        print(f"Applying Gaussian smoothing (sigma={smooth_sigma})...")
+        norm_volume = apply_smoothing(norm_volume, sigma=smooth_sigma)
+
+    print("Preprocessing complete.")
+    return norm_volume

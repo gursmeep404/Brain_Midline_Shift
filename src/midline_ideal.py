@@ -4,17 +4,25 @@ import SimpleITK as sitk
 import cv2
 from scipy import ndimage
 
-def compute_midlines(nifti_path, output_dir,
+def compute_midlines(nifti_path=None, output_dir=None,
                      hu_min=-5, hu_max=75,
                      roi_height=50, roi_width=40,
-                     canny_thresh_low=50, canny_thresh_high=150):
-    os.makedirs(output_dir, exist_ok=True)
+                     canny_thresh_low=50, canny_thresh_high=150,
+                     volume_override=None):
 
-    ct_img = sitk.ReadImage(nifti_path)
-    ct_np = sitk.GetArrayFromImage(ct_img)
-    spacing = ct_img.GetSpacing()
-    origin = ct_img.GetOrigin()
-    direction = ct_img.GetDirection()
+    if volume_override is not None:
+        ct_np = volume_override
+        spacing = (1.0, 1.0, 1.0)
+        origin = (0.0, 0.0, 0.0)
+        direction = (1.0, 0.0, 0.0)
+    else:
+        import SimpleITK as sitk
+        ct_img = sitk.ReadImage(nifti_path)
+        ct_np = sitk.GetArrayFromImage(ct_img)
+        spacing = ct_img.GetSpacing()
+        origin = ct_img.GetOrigin()
+        direction = ct_img.GetDirection()
+
 
     midline_mask_initial = np.zeros_like(ct_np, dtype=np.uint8)
     midline_mask_adjusted = np.zeros_like(ct_np, dtype=np.uint8)
@@ -78,4 +86,4 @@ def compute_midlines(nifti_path, output_dir,
     sitk.WriteImage(mask_init, os.path.join(output_dir, "midline_center_of_mass.nii.gz"))
     sitk.WriteImage(mask_adj, os.path.join(output_dir, "midline_adjusted.nii.gz"))
 
-    return slice_data_list, ct_img
+    return slice_data_list, ct_np
