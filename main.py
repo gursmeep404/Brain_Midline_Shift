@@ -9,7 +9,7 @@ import os
 
 
 USE_NIFTI = True  # Set to False to use DICOM
-OUTPUT_DIR = "outputs/ventricles6"
+OUTPUT_DIR = "outputs/ventricles8"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 WINDOW_CENTER = 35
@@ -56,7 +56,7 @@ print("Segmenting ventricles using thresholding...")
 ventricle_masks = segment_volume_threshold(volume)
 
 
-TEMPLATE_DIR = "templates"  # Replace with your actual template folder path
+TEMPLATE_DIR = "templates" 
 
 print("Estimating actual midline using template-matching...")
 
