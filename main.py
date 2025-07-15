@@ -3,13 +3,14 @@ from src.visualisation import save_visualizations
 from src.segmentation import segment_volume_threshold
 from src.preprocessing import preprocess_dicom
 from src.midline_actual import estimate_actual_midline_mask
+from src.mls_calculator import calculate_midline_shift_mm
 import SimpleITK as sitk
 import numpy as np
 import os
 
 
 USE_NIFTI = True  # Set to False to use DICOM
-OUTPUT_DIR = "outputs/ventricles8"
+OUTPUT_DIR = "outputs/ventricles17"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 WINDOW_CENTER = 35
@@ -67,6 +68,17 @@ midline_img = sitk.GetImageFromArray(midline_masks.astype(np.uint8))
 midline_img.CopyInformation(ref_img)
 sitk.WriteImage(midline_img, os.path.join(OUTPUT_DIR, "actual_midline_mask.nii.gz"))
 print("Saved actual midline mask to NIfTI.")
+
+
+ideal_midline_path = os.path.join(OUTPUT_DIR, "midline_center_of_mass.nii.gz")
+actual_midline_path = os.path.join(OUTPUT_DIR, "actual_midline_mask.nii.gz")
+output_shift_path = os.path.join(OUTPUT_DIR, "midline_shifts_mm.npz")
+
+shifts_mm, avg_shift = calculate_midline_shift_mm(
+    ideal_midline_path=ideal_midline_path,
+    actual_midline_path=actual_midline_path,
+    output_path=output_shift_path
+)
 
 
 

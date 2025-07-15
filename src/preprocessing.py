@@ -67,7 +67,7 @@ def apply_smoothing(volume, sigma=1.0):
 def preprocess_dicom(dicom_folder,
                      hu_min=0,
                      hu_max=80,
-                     resize_shape=(256, 256),
+                     resize_shape=None,
                      smooth_sigma=None):
     
     print("Loading DICOM series...")
