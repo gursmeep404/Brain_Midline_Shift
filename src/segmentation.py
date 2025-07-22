@@ -4,14 +4,14 @@ import cv2
 #  Segment ventricular regions based on HU range. Returns a binary 2D mask.
 def segment_ventricles(slice_img, hu_low=-5, hu_high=20, min_area=100):
 
-    # 1. Threshold to isolate CSF-like HU range
+    # Threshold to isolate CSF-like HU range
     mask = np.logical_and(slice_img >= hu_low, slice_img <= hu_high).astype(np.uint8) * 255
 
-    # 2. Morphological cleaning
+    # Morphological cleaning
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
 
-    # 3. Remove small components
+    # Remove small components
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
     filtered_mask = np.zeros_like(mask)
     for i in range(1, num_labels):  # Skip background

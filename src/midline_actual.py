@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import os
 
+_actual_midline_data = {}
+
 def extract_shape_features(binary_mask):
     contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     hu_features = []
@@ -34,16 +36,12 @@ def match_blob_to_templates(blob, template_features, threshold=2.0):
                 return True
     return False
 
-def estimate_actual_midline_mask(ventricle_masks, template_dir, min_area=100):
-    """
-    Estimate actual midline from segmented ventricle masks using template matching.
 
-    Args:
-        ventricle_masks: 3D numpy array (segmented masks)
-        template_dir: folder with 2D ventricle template PNGs
-    Returns:
-        midline_volume: 3D binary mask of estimated midline
-    """
+
+
+def estimate_actual_midline_mask(ventricle_masks, template_dir, min_area=100):
+    global _actual_midline_data
+    
     h, w = ventricle_masks.shape[1:]
     midline_volume = np.zeros_like(ventricle_masks)
 
@@ -51,6 +49,7 @@ def estimate_actual_midline_mask(ventricle_masks, template_dir, min_area=100):
 
     mid_xs = []
     valid_slices = []
+    slice_data_list = []  # Store per-slice midline positions
 
     for i in range(ventricle_masks.shape[0]):
         mask = ventricle_masks[i].astype(np.uint8)
@@ -71,34 +70,52 @@ def estimate_actual_midline_mask(ventricle_masks, template_dir, min_area=100):
         if len(blobs) < 2:
             continue
 
-        # Split into left/right
         left_blobs = [b for b in blobs if b[0] < w // 2]
         right_blobs = [b for b in blobs if b[0] >= w // 2]
 
-        # Match left-right pair of blobs
         best_mid_x = None
         for lc in left_blobs:
             for rc in right_blobs:
-                if abs(lc[0] - rc[0]) < w * 0.25:
-                    continue  # blobs too close
+                # Relaxed distance constraint
+                if abs(lc[0] - rc[0]) < w * 0.15:
+                    continue  
+
                 left_blob = lc[1]
                 right_blob = rc[1]
 
-                if match_blob_to_templates(left_blob, template_features) and match_blob_to_templates(right_blob, template_features):
+                left_match = match_blob_to_templates(left_blob, template_features)
+                right_match = match_blob_to_templates(right_blob, template_features)
+
+                # Accept if at least one matches
+                if left_match or right_match:
                     mid_x = int((lc[0] + rc[0]) / 2)
                     best_mid_x = mid_x
                     break
+
             if best_mid_x is not None:
                 break
+
+        # Fallback if no template match but both blobs are present
+        if best_mid_x is None and left_blobs and right_blobs:
+            lc = max(left_blobs, key=lambda b: cv2.countNonZero(b[1]))  # largest left
+            rc = max(right_blobs, key=lambda b: cv2.countNonZero(b[1]))  # largest right
+            best_mid_x = int((lc[0] + rc[0]) / 2)
+
 
         if best_mid_x is not None:
             mid_xs.append(best_mid_x)
             valid_slices.append(i)
+            slice_data_list.append({"index": i, "actual_mid_x": best_mid_x})
 
-    # Final smoothing/aggregation
     if len(mid_xs) > 0:
         final_mid_x = int(np.median(mid_xs))
         for i in valid_slices:
             midline_volume[i, :, final_mid_x - 1:final_mid_x + 2] = 255
 
+    # Store extra data for later visualization
+    _actual_midline_data["slice_data_list"] = slice_data_list
+
     return midline_volume
+
+def get_actual_midline_data():
+    return _actual_midline_data.get("slice_data_list", [])

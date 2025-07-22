@@ -7,3 +7,5 @@ registered_nifti_files/
 output_midline/
 output_midline_2/
 templates/
+testing/
+dicom_to_nifti_files/

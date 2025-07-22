@@ -4,13 +4,14 @@ from src.segmentation import segment_volume_threshold
 from src.preprocessing import preprocess_dicom
 from src.midline_actual import estimate_actual_midline_mask
 from src.mls_calculator import calculate_midline_shift_mm
+from src.midline_actual import get_actual_midline_data
 import SimpleITK as sitk
 import numpy as np
 import os
 
 
 USE_NIFTI = True  # Set to False to use DICOM
-OUTPUT_DIR = "outputs/ventricles17"
+OUTPUT_DIR = "testing/test_sample_mls_1"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 WINDOW_CENTER = 35
@@ -20,7 +21,7 @@ HU_MAX = WINDOW_CENTER + (WINDOW_WIDTH // 2)
 
 
 if USE_NIFTI:
-    NIFTI_PATH = "registered_nifti_files/registered2.nii/registered2.nii"
+    NIFTI_PATH = "registered_nifti_files/registered_mls_1.nii/registered_mls_1.nii"
     print("Running midline detection from NIFTI...")
     
     slices, volume = compute_midlines(
@@ -36,7 +37,7 @@ else:
     DICOM_PATH = "dicom_files"
     print("Preprocessing DICOM series...")
     
-    volume = preprocess_dicom(DICOM_PATH, hu_min=HU_MIN, hu_max=HU_MAX, resize_shape=(256, 256))
+    volume = preprocess_dicom(DICOM_PATH, hu_min=HU_MIN, hu_max=HU_MAX)
 
     print("Running midline detection on preprocessed volume...")
     slices, volume = compute_midlines(
@@ -52,6 +53,8 @@ else:
     ref_img.SetSpacing((1.0, 1.0, 1.0))
     ref_img.SetOrigin((0.0, 0.0, 0.0))
     ref_img.SetDirection((1.0, 0.0, 0.0))
+
+
 
 print("Segmenting ventricles using thresholding...")
 ventricle_masks = segment_volume_threshold(volume)
@@ -83,10 +86,17 @@ shifts_mm, avg_shift = calculate_midline_shift_mm(
 
 
 print("Saving slice visualizations...")
-save_visualizations(slices, OUTPUT_DIR, ventricle_masks=ventricle_masks)
+actual_midline_data = get_actual_midline_data()
+
+save_visualizations(
+    slices,
+    OUTPUT_DIR,
+    ventricle_masks=ventricle_masks,
+    actual_midline_data=actual_midline_data
+)
 
 
-print("Saving ventricle mask as NIfTI for 3D Slicer...")
+print("Saving ventricle mask as NIfti...")
 vent_img = sitk.GetImageFromArray(ventricle_masks.astype(np.uint8))
 vent_img.CopyInformation(ref_img)
 

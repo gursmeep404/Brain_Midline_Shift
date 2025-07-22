@@ -53,11 +53,6 @@ def normalize_volume(volume, hu_min=0, hu_max=80):
     norm_volume = ((volume - hu_min) / (hu_max - hu_min) * 255).astype(np.uint8)
     return norm_volume
 
-# Resize volume to uniform shape (e.g., 256x256 per slice)
-def resize_volume(volume, output_shape=(256, 256)):
-    resized_slices = [resize(slice, output_shape, mode='constant', preserve_range=True).astype(np.uint8)
-                      for slice in volume]
-    return np.stack(resized_slices, axis=0)
 
 # Apply Gaussian filter to reduce noise
 def apply_smoothing(volume, sigma=1.0):
@@ -67,7 +62,6 @@ def apply_smoothing(volume, sigma=1.0):
 def preprocess_dicom(dicom_folder,
                      hu_min=0,
                      hu_max=80,
-                     resize_shape=None,
                      smooth_sigma=None):
     
     print("Loading DICOM series...")
@@ -78,10 +72,6 @@ def preprocess_dicom(dicom_folder,
 
     print(f"Normalizing HU to grayscale (HU range {hu_min}-{hu_max})...")
     norm_volume = normalize_volume(stripped_volume, hu_min=hu_min, hu_max=hu_max)
-
-    if resize_shape:
-        print(f"Resizing to shape {resize_shape}...")
-        norm_volume = resize_volume(norm_volume, resize_shape)
 
     if smooth_sigma:
         print(f"Applying Gaussian smoothing (sigma={smooth_sigma})...")
