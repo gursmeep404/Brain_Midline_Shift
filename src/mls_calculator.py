@@ -26,7 +26,9 @@ def calculate_midline_shift_mm(ideal_midline_path, actual_midline_path, output_p
             continue  # skip slices without data
 
         mean_ideal_x = int(np.mean(ideal_xs))
+        # print(f"mean of ideal data {mean_ideal_x}")
         mean_actual_x = int(np.mean(actual_xs))
+        # print(f"mean of actual data {mean_actual_x}")
         pixel_shift = abs(mean_actual_x - mean_ideal_x)
         mm_shift = pixel_shift * x_spacing
 

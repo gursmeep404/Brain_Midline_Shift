@@ -1,7 +1,6 @@
 import os
 import cv2
 import numpy as np
-
 def save_visualizations(slice_data_list, output_dir, ventricle_masks=None, actual_midline_data=None):
    
     slice_dir = os.path.join(output_dir, "slices")

@@ -11,7 +11,7 @@ import os
 
 
 USE_NIFTI = True  # Set to False to use DICOM
-OUTPUT_DIR = "testing/test_sample_mls_1"
+OUTPUT_DIR = "testing/test_sample_mls_again_3"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 WINDOW_CENTER = 35
@@ -21,7 +21,7 @@ HU_MAX = WINDOW_CENTER + (WINDOW_WIDTH // 2)
 
 
 if USE_NIFTI:
-    NIFTI_PATH = "registered_nifti_files/registered_mls_1.nii/registered_mls_1.nii"
+    NIFTI_PATH = "registered_nifti_files/registered_mls_3.nii/registered_mls_3.nii"
     print("Running midline detection from NIFTI...")
     
     slices, volume = compute_midlines(
@@ -62,7 +62,7 @@ ventricle_masks = segment_volume_threshold(volume)
 
 TEMPLATE_DIR = "templates" 
 
-print("Estimating actual midline using template-matching...")
+print("Estimating actual midline ...")
 
 midline_masks = estimate_actual_midline_mask(ventricle_masks, TEMPLATE_DIR)
 
@@ -87,6 +87,7 @@ shifts_mm, avg_shift = calculate_midline_shift_mm(
 
 print("Saving slice visualizations...")
 actual_midline_data = get_actual_midline_data()
+
 
 save_visualizations(
     slices,

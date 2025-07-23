@@ -4,118 +4,198 @@ import os
 
 _actual_midline_data = {}
 
-def extract_shape_features(binary_mask):
-    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    hu_features = []
-    for cnt in contours:
-        if cv2.contourArea(cnt) < 50:
-            continue
-        hu = cv2.HuMoments(cv2.moments(cnt)).flatten()
-        hu = -np.sign(hu) * np.log10(np.abs(hu) + 1e-10)  # log scale
-        hu_features.append(hu)
-    return hu_features
-
-def load_template_features(template_dir):
-    template_features = []
-    for fname in os.listdir(template_dir):
-        if not fname.endswith('.png'):
-            continue
-        path = os.path.join(template_dir, fname)
-        tmpl = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-        tmpl = cv2.threshold(tmpl, 127, 255, cv2.THRESH_BINARY)[1]
-        features = extract_shape_features(tmpl)
-        template_features.extend(features)
-    return template_features
-
-def match_blob_to_templates(blob, template_features, threshold=2.0):
-    feats = extract_shape_features(blob)
-    for f1 in feats:
-        for f2 in template_features:
-            dist = np.linalg.norm(f1 - f2)
-            if dist < threshold:
-                return True
-    return False
+# Mask cleaning using flood fill to fill the internal holes in the mask
+def _fill_holes(mask01):
+   
+    h, w = mask01.shape
+    flood = mask01.copy()
+    ff_mask = np.zeros((h + 2, w + 2), dtype=np.uint8)
+    cv2.floodFill(flood, ff_mask, seedPoint=(0, 0), newVal=1)
+    holes = 1 - flood
+    return (mask01 | holes).astype(np.uint8)
 
 
+def _clean_ventricle_slice(mask_slice, min_area=100, morph_kernel=3, keep_top=2):
+
+    m = (mask_slice > 0).astype(np.uint8)
+
+    if morph_kernel and morph_kernel > 1:
+        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (morph_kernel, morph_kernel))
+        m = cv2.morphologyEx(m, cv2.MORPH_OPEN, k)
+        m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, k)
+
+    m = _fill_holes(m)
+
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
+    if num_labels <= 1:
+        return (m * 255).astype(np.uint8)
+
+    comps = []
+    for lbl in range(1, num_labels):  # skip background
+        area = stats[lbl, cv2.CC_STAT_AREA]
+        if area >= min_area:
+            comps.append((area, lbl))
+
+    if not comps:
+        return np.zeros_like(m, dtype=np.uint8)
+
+    comps.sort(reverse=True)
+    keep = [lbl for _, lbl in comps[:keep_top]]
+
+    out = np.zeros_like(m, dtype=np.uint8)
+    for lbl in keep:
+        out[labels == lbl] = 1
+
+    return (out * 255).astype(np.uint8)
 
 
-def estimate_actual_midline_mask(ventricle_masks, template_dir, min_area=100):
-    global _actual_midline_data
+
+def _pca_pc1_direction(xs, ys):
+   
     
-    h, w = ventricle_masks.shape[1:]
-    midline_volume = np.zeros_like(ventricle_masks)
+    pts = np.column_stack((xs.astype(np.float32), ys.astype(np.float32)))
+    # center
+    mean = pts.mean(axis=0, keepdims=True)
+    pts_c = pts - mean
+    # covariance
+    cov = np.cov(pts_c, rowvar=False)
+    
+    eigvals, eigvecs = np.linalg.eigh(cov)  
+    idx = np.argmax(eigvals) 
+    pc1 = eigvecs[:, idx]    
+    # normalize
+    n = np.linalg.norm(pc1)
+    if n > 0:
+        pc1 = pc1 / n
+    return pc1, mean.ravel() 
 
-    template_features = load_template_features(template_dir)
 
-    mid_xs = []
-    valid_slices = []
-    slice_data_list = []  # Store per-slice midline positions
+def _clip_line_to_image(cx, cy, vx, vy, w, h):
+    
+    eps = 1e-8
+    ts = []
 
-    for i in range(ventricle_masks.shape[0]):
-        mask = ventricle_masks[i].astype(np.uint8)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Intersections with vertical borders x=0 and x=w-1
+    if abs(vx) > eps:
+        t = (0 - cx) / vx
+        y = cy + t * vy
+        if 0 <= y <= h - 1:
+            ts.append(t)
+        t = (w - 1 - cx) / vx
+        y = cy + t * vy
+        if 0 <= y <= h - 1:
+            ts.append(t)
 
-        blobs = []
-        for cnt in contours:
-            if cv2.contourArea(cnt) < min_area:
-                continue
-            blob = np.zeros_like(mask)
-            cv2.drawContours(blob, [cnt], -1, 255, -1)
-            M = cv2.moments(blob)
-            if M["m00"] == 0:
-                continue
-            cx = int(M["m10"] / M["m00"])
-            blobs.append((cx, blob))
+    # Intersections with horizontal borders y=0 and y=h-1
+    if abs(vy) > eps:
+        t = (0 - cy) / vy
+        x = cx + t * vx
+        if 0 <= x <= w - 1:
+            ts.append(t)
+        t = (h - 1 - cy) / vy
+        x = cx + t * vx
+        if 0 <= x <= w - 1:
+            ts.append(t)
 
-        if len(blobs) < 2:
+    if len(ts) < 2:
+        # fallback: degenerate direction; produce a short vertical tick
+        return (int(round(cx)), 0), (int(round(cx)), h - 1)
+
+    t_min = min(ts)
+    t_max = max(ts)
+
+    x1 = cx + t_min * vx
+    y1 = cy + t_min * vy
+    x2 = cx + t_max * vx
+    y2 = cy + t_max * vy
+
+    return (int(round(x1)), int(round(y1))), (int(round(x2)), int(round(y2)))
+
+
+def estimate_actual_midline_mask(ventricle_masks, template_dir=None, min_area=100,
+                                 morph_kernel=3, keep_top=2, thickness=3,
+                                 draw_mode="pc1"):
+   
+    global _actual_midline_data
+
+    n_slices, h, w = ventricle_masks.shape
+    midline_volume = np.zeros((n_slices, h, w), dtype=np.uint8)
+
+    slice_records = []
+
+    for i in range(n_slices):
+        raw = ventricle_masks[i]
+
+        # Clean slice mask
+        cleaned = _clean_ventricle_slice(raw, min_area=min_area,
+                                         morph_kernel=morph_kernel,
+                                         keep_top=keep_top)
+
+        area = int(np.count_nonzero(cleaned))
+        if area < min_area:
+            # Not enough ventricle pixels to trust
+            slice_records.append({
+                "index": i,
+                "usable": False,
+                "reason": "area<min_area",
+                "actual_mid_x": None,
+                "pc1_vx": None,
+                "pc1_vy": None,
+                "centroid_x": None,
+                "centroid_y": None,
+                "area": area
+            })
             continue
 
-        left_blobs = [b for b in blobs if b[0] < w // 2]
-        right_blobs = [b for b in blobs if b[0] >= w // 2]
+        ys, xs = np.nonzero(cleaned)
+        if xs.size < 5:
+            slice_records.append({
+                "index": i,
+                "usable": False,
+                "reason": "too_few_pixels",
+                "actual_mid_x": None,
+                "pc1_vx": None,
+                "pc1_vy": None,
+                "centroid_x": None,
+                "centroid_y": None,
+                "area": area
+            })
+            continue
 
-        best_mid_x = None
-        for lc in left_blobs:
-            for rc in right_blobs:
-                # Relaxed distance constraint
-                if abs(lc[0] - rc[0]) < w * 0.15:
-                    continue  
+        (vx, vy), (cx, cy) = _pca_pc1_direction(xs, ys)  # PC1 + centroid
 
-                left_blob = lc[1]
-                right_blob = rc[1]
+        if draw_mode == "vertical":
+            # Force vertical line at centroid x (robust for MLS)
+            mid_x = int(round(cx))
+            x1 = max(0, mid_x - thickness // 2)
+            x2 = min(w, mid_x + (thickness + 1) // 2)
+            midline_volume[i, :, x1:x2] = 255
+            used_mid_x = mid_x
 
-                left_match = match_blob_to_templates(left_blob, template_features)
-                right_match = match_blob_to_templates(right_blob, template_features)
+        else:  # "pc1": draw actual PC1 line through centroid
+            p1, p2 = _clip_line_to_image(cx, cy, vx, vy, w, h)
+            cv2.line(midline_volume[i], p1, p2, color=255, thickness=thickness)
+            # For MLS: use centroid x
+            used_mid_x = int(round(cx))
 
-                # Accept if at least one matches
-                if left_match or right_match:
-                    mid_x = int((lc[0] + rc[0]) / 2)
-                    best_mid_x = mid_x
-                    break
+        slice_records.append({
+            "index": i,
+            "usable": True,
+            "reason": "ok",
+            "actual_mid_x": used_mid_x,
+            "pc1_vx": float(vx),
+            "pc1_vy": float(vy),
+            "centroid_x": float(cx),
+            "centroid_y": float(cy),
+            "area": area
+        })
 
-            if best_mid_x is not None:
-                break
-
-        # Fallback if no template match but both blobs are present
-        if best_mid_x is None and left_blobs and right_blobs:
-            lc = max(left_blobs, key=lambda b: cv2.countNonZero(b[1]))  # largest left
-            rc = max(right_blobs, key=lambda b: cv2.countNonZero(b[1]))  # largest right
-            best_mid_x = int((lc[0] + rc[0]) / 2)
-
-
-        if best_mid_x is not None:
-            mid_xs.append(best_mid_x)
-            valid_slices.append(i)
-            slice_data_list.append({"index": i, "actual_mid_x": best_mid_x})
-
-    if len(mid_xs) > 0:
-        final_mid_x = int(np.median(mid_xs))
-        for i in valid_slices:
-            midline_volume[i, :, final_mid_x - 1:final_mid_x + 2] = 255
-
-    # Store extra data for later visualization
-    _actual_midline_data["slice_data_list"] = slice_data_list
+    # Store per-slice info for visualization / debugging
+    _actual_midline_data["slice_data_list"] = slice_records
 
     return midline_volume
 
+# For visualisation
 def get_actual_midline_data():
+  
     return _actual_midline_data.get("slice_data_list", [])
