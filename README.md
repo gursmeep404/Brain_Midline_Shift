@@ -7,6 +7,9 @@ Midline Shift is a condition which is always secondary to some other pathology w
 Due to very less data model training for the same was not possible. This approach tries to solve the problem algorithmically using computer vision techniques. We use Nifti volumes of CT and if data is in Dicom there is a script in notebooks folder that will convert your DICOM files to a Nifti volume
 
 These are the steps I followed:
+
+- **Registration:** The nifti volume is registered in ANTS using an MRI atlas which is given in the repo. It performs linear transformation to rotate the volume so as to eliminate tilts in the scan. This atlas has slice thickness of 1mm which matched the data I had. I would recommend to download and use other atlas if your data has different slice thickness.
+
  - **Segmentation of Ventricles:** Ventricles are segmented using thresholding. Since ventricles are filled with CSF and it's HU range is between -5 and 20 so we use it to create a segmentation mask. I tried using segmentation models for this but they do not segment brain regions properly for brain samples which are not normal.
 
  - **Selection of ideal slice:** We select one ideal slice to perform our calculation on which is the one with maximum segmented area visible in the ventricle mask
@@ -52,4 +55,4 @@ For some patients with midline shifts the scans show distortion in the shape of 
 <p align="center">
   <img src="images/image4.png" width="400" height="300"/>
 </p>
-<p align="center"><sub>Ideal and actual midlines</sub></p>
+<p align="center">Distorted Ventricles</p>
