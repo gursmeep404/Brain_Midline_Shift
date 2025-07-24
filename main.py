@@ -11,7 +11,7 @@ import os
 
 
 USE_NIFTI = True  # Set to False to use DICOM
-OUTPUT_DIR = "testing/test_sample_mls_again_3"
+OUTPUT_DIR = "testing/test_sample_normal_again_1"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 WINDOW_CENTER = 35
@@ -21,7 +21,7 @@ HU_MAX = WINDOW_CENTER + (WINDOW_WIDTH // 2)
 
 
 if USE_NIFTI:
-    NIFTI_PATH = "registered_nifti_files/registered_mls_3.nii/registered_mls_3.nii"
+    NIFTI_PATH = "registered_nifti_files/registered_normal_1.nii/registered_normal_1.nii"
     print("Running midline detection from NIFTI...")
     
     slices, volume = compute_midlines(

@@ -199,3 +199,94 @@ def estimate_actual_midline_mask(ventricle_masks, template_dir=None, min_area=10
 def get_actual_midline_data():
   
     return _actual_midline_data.get("slice_data_list", [])
+
+# import numpy as np
+# import cv2
+# import os
+
+# _actual_midline_data = {}
+
+
+# def _clean_ventricle_slice(mask_slice, min_area=100, morph_kernel=3, keep_top=2):
+#     """
+#     Basic cleaning of each slice to keep only the main ventricle regions.
+#     """
+#     m = (mask_slice > 0).astype(np.uint8)
+
+#     if morph_kernel and morph_kernel > 1:
+#         k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (morph_kernel, morph_kernel))
+#         m = cv2.morphologyEx(m, cv2.MORPH_OPEN, k)
+#         m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, k)
+
+#     # Remove small connected components
+#     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
+#     if num_labels <= 1:
+#         return (m * 255).astype(np.uint8)
+
+#     comps = [(stats[lbl, cv2.CC_STAT_AREA], lbl) for lbl in range(1, num_labels)]
+#     comps = [c for c in comps if c[0] >= min_area]
+#     if not comps:
+#         return np.zeros_like(m, dtype=np.uint8)
+
+#     comps.sort(reverse=True)
+#     keep = [lbl for _, lbl in comps[:keep_top]]
+#     out = np.isin(labels, keep).astype(np.uint8)
+#     return (out * 255).astype(np.uint8)
+
+
+# def _compute_centroid(mask):
+#     """
+#     Compute the centroid (center of mass) of a binary mask.
+#     """
+#     M = cv2.moments(mask)
+#     if M["m00"] == 0:
+#         return None
+#     cx = int(M["m10"] / M["m00"])
+#     cy = int(M["m01"] / M["m00"])
+#     return cx, cy
+
+
+# def estimate_actual_midline_mask(ventricle_masks, template_dir=None, min_area=100, morph_kernel=3, keep_top=2, thickness=3):
+#     """
+#     Estimate actual midline by drawing a vertical line through the centroid of ventricles in each slice.
+#     """
+#     global _actual_midline_data
+
+#     n_slices, h, w = ventricle_masks.shape
+#     midline_volume = np.zeros((n_slices, h, w), dtype=np.uint8)
+#     slice_records = []
+
+#     for i in range(n_slices):
+#         raw = ventricle_masks[i]
+#         cleaned = _clean_ventricle_slice(raw, min_area=min_area, morph_kernel=morph_kernel, keep_top=keep_top)
+
+#         area = int(np.count_nonzero(cleaned))
+#         if area < min_area:
+#             slice_records.append({
+#                 "index": i, "usable": False, "reason": "area<min_area", "actual_mid_x": None
+#             })
+#             continue
+
+#         centroid = _compute_centroid(cleaned)
+#         if centroid is None:
+#             slice_records.append({
+#                 "index": i, "usable": False, "reason": "no_centroid", "actual_mid_x": None
+#             })
+#             continue
+
+#         cx, cy = centroid
+#         x1 = max(0, cx - thickness // 2)
+#         x2 = min(w, cx + (thickness + 1) // 2)
+#         midline_volume[i, :, x1:x2] = 255
+
+#         slice_records.append({
+#             "index": i, "usable": True, "reason": "ok", "actual_mid_x": cx,
+#             "centroid_x": float(cx), "centroid_y": float(cy), "area": area
+#         })
+
+#     _actual_midline_data["slice_data_list"] = slice_records
+#     return midline_volume
+
+
+# def get_actual_midline_data():
+#     return _actual_midline_data.get("slice_data_list", [])
