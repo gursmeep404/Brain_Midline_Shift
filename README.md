@@ -55,4 +55,4 @@ For some patients with midline shifts the scans show distortion in the shape of 
 <p align="center">
   <img src="images/image4.png" width="400" height="300"/>
 </p>
-<p align="center">Distorted Ventricles</p>
+<p align="center"><sub>Distorted Ventricles</sub></p>
