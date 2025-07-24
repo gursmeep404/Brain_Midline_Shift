@@ -9,3 +9,5 @@ output_midline_2/
 templates/
 testing/
 dicom_to_nifti_files/
+segmented/
+src/__pycache__
