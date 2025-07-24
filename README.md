@@ -25,15 +25,15 @@ Following are the images of one slice as viewed on a 3D slicer
 <table>
   <tr>
     <td align="center">
-      <img src="images/image1.pngimage1.png" width="400"/><br/>
+      <img src="images/image1.png" width="400"/><br/>
       <sub>Axial Slice</sub>
     </td>
     <td align="center">
-      <img src="images/image 2.pngimage2.png" width=400"/><br/>
+      <img src="images/image 2.png" width=400"/><br/>
       <sub>Slice form mask</sub>
     </td>
     <td align="center">
-      <img src="images/image 3.pngimage3.png" width="400"/><br/>
+      <img src="images/image 3.png" width="400"/><br/>
       <sub>Original slice with mask overlay</sub>
     </td>
   </tr>
