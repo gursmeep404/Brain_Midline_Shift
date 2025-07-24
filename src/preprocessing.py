@@ -24,7 +24,7 @@ def load_dicom_series(dicom_folder):
     best_series = max(series_dict.values(), key=len)
     print(f"Selected series with {len(best_series)} slices")
 
-    # Sort slices by position or instance number
+    # Sort slices by instance number
     try:
         best_series.sort(key=lambda d: float(d.ImagePositionPatient[2]))
     except:
@@ -56,7 +56,7 @@ def normalize_volume(volume, hu_min=0, hu_max=80):
 
 # Apply Gaussian filter to reduce noise
 def apply_smoothing(volume, sigma=1.0):
-    return gaussian_filter(volume, sigma=(0, 1, 1))  # smooth x and y only, not z
+    return gaussian_filter(volume, sigma=(0, 1, 1))  # Not smoothing z direction
 
 # Full preprocessing pipeline
 def preprocess_dicom(dicom_folder,

@@ -9,10 +9,10 @@ def segment_ventricles(slice_img, hu_low=-5, hu_high=20, min_area=100):
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
 
-    # Remove small components
+    # Removing small components
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
     filtered_mask = np.zeros_like(mask)
-    for i in range(1, num_labels):  # Skip background
+    for i in range(1, num_labels):  
         if stats[i, cv2.CC_STAT_AREA] >= min_area:
             filtered_mask[labels == i] = 255
 
