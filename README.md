@@ -4,40 +4,19 @@ Midline Shift is a condition which is always secondary to some other pathology w
 
 ![Brain Anatomy](./images/brain_anatomy.png)
 
+Due to very less data model training for the same was not possible. This approach tries to solve the problem algorithmically using computer vision techniques. We use Nifti volumes of CT and if data is in Dicom there is a script in notebooks folder that will convert your DICOM files to a Nifti volume
+
+These are the steps I followed:
+ - **Segmentation of Ventricles:** Ventricles are segmented using thresholding. Since ventricles are filled with CSF and it's HU range is between -5 and 20 so we use it to create a segmentation mask. I tried using segmentation models for this but they do not segment brain regions properly for brain samples which are not normal.
+
+ - **Selection of ideal slice:** We select one ideal slice to perform our calculation on which is the one with maximum segmented area visible in the ventricle mask
+
+ - **Ideal midline:** We find ideal midline by creating a bone mask and then computing a centre of mass through symmetry. Line through this is used as the first estimate for ideal midline. We then apply edge detection by defining regions of interest near the upper and bottom regions of the previous midline using canny function from cv2 and then make a line using hough transform.
+
+ - **Actual midline:** This is calculated using PCA. The idea is that for a CT scan the ventricle mask contains ventricle regions and actual midline is estimated through them which would lie on the principal component because midline is also the line which gives us maximum spread in ventricles.
+
+- **Measurement:** Distance between the x coordinates found above gives the distance of midline which is then converted from pixels to mm which is how it is usually reported
 
 
 
 
-
-
-
-
-
-
----- Approaches and Dead ends
-
-Problem one : Ideal midline
--> solved using 2 things - 
-1. Created a bone mask. Centre of mass by symmetry is the ideal midline (fallback)
-2. Edge detection using canny and then hough transform to estimate a midline
-
---- As fas as I know ideal midline is correct
-
-Problem two : Actual midline
--> Two subparts
-1. Segmentation of ventricles (midline structures to be precise)
-2. Midline through the septum pellucidum
-
-Approaches for segmentation:
-1. Thresholding (morphological cleaning. skipping 20% slices in the beginning and end and also trimming 1/3rd mask from up and down to remove noise)
-2. Using a segmentation model (SynthSeg)
-
-Approaches for actual midline:
-1. Templating
-2. PCA
-
-
-Issues I need to resolve:
-- Look for better ways to segment
-- Look for better ways to calculate actual midline if PCA doesn't work
-- Maybe somehow try to find one ideal slice to perform all the calculations just like how a radiologist does
