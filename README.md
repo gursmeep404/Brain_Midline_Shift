@@ -50,6 +50,6 @@ For some patients with midline shifts the scans show distortion in the shape of 
 
 
 <p align="center">
-  <img src="images/slice_093.png" width="400" height="300"/>
+  <img src="images/image4.png" width="400" height="300"/>
 </p>
 <p align="center"><sub>Ideal and actual midlines</sub></p>
