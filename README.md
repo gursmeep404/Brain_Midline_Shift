@@ -18,8 +18,6 @@ These are the steps I followed:
 - **Measurement:** Distance between the x coordinates found above gives the distance of midline which is then converted from pixels to mm which is how it is usually reported
 
 
-### Visualisation
-
 Following are the images of one slice as viewed on a 3D slicer
 
 <table>
@@ -39,5 +37,11 @@ Following are the images of one slice as viewed on a 3D slicer
   </tr>
 </table>
 
+This is a CT slice from a patient with a midline shift:
 
+<p align="center">
+  <img src="images/slice_093.png" width="600"/>
+</p>
+
+<p align="center"><sub>Ideal and actual midlines</sub></p>
 
