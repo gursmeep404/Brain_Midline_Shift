@@ -11,7 +11,7 @@ from src.mls_calculator import calculate_midline_shift_mm
 from src.visualisation import save_visualizations
 
 USE_NIFTI = True  # Set to False to use DICOM
-OUTPUT_DIR = "testing/test_sample_mls_again_6_idealslice_again"
+OUTPUT_DIR = "final_testing/test_sample_normal_4"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 WINDOW_CENTER = 35
@@ -21,7 +21,7 @@ HU_MAX = WINDOW_CENTER + (WINDOW_WIDTH // 2)
 
 
 if USE_NIFTI:
-    NIFTI_PATH = "registered_nifti_files/registered_mls_6.nii/registered_mls_6.nii"
+    NIFTI_PATH = "registered_nifti_files/registered_normal_4.nii/registered_normal_4.nii"
     print("Running midline detection from NIFTI...")
     volume = sitk.GetArrayFromImage(sitk.ReadImage(NIFTI_PATH))
     ref_img = sitk.ReadImage(NIFTI_PATH)
@@ -84,6 +84,18 @@ shifts_mm, avg_shift = calculate_midline_shift_mm(
 print("Saving slice visualizations...")
 slice_data = get_visualization_slice_data(volume, ideal_slice_index, HU_MIN, HU_MAX)
 actual_midline_data = get_actual_midline_data(volume,slice_index=ideal_slice_index)
+
+ys, xs = np.nonzero(actual_midline_mask[ideal_slice_index])
+if xs.size > 0:
+    actual_mid_x = int(np.mean(xs))  
+else:
+    actual_mid_x = None
+
+actual_midline_data = {
+    "index": ideal_slice_index,
+    "actual_mid_x": actual_mid_x
+}
+
 
 save_visualizations(
     [slice_data],

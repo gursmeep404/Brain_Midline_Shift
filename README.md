@@ -1,3 +1,19 @@
+# Midline Shift Detection and Measurement in Brain CT Scans
+
+Midline Shift is a condition which is always secondary to some other pathology which causes **Intracranial Pressure** inside the skull and displaces normal brain structures. These pathologies usually are `Haemorrhage`, `Tumor`, `Edema`. These take up space inside the skull and hence displace midline structures which include the falx ceribri, septum pellucidum, third ventricle, fourth ventricle, pineal gland and foreman of monro. This is called the midline shift.
+
+![Brain Anatomy](./images/brain_anatomy.png)
+
+
+
+
+
+
+
+
+
+
+
 ---- Approaches and Dead ends
 
 Problem one : Ideal midline

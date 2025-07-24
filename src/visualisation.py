@@ -6,7 +6,9 @@ def save_visualizations(slice_data_list, output_dir, ventricle_masks=None, actua
     slice_dir = os.path.join(output_dir, "slices")
     os.makedirs(slice_dir, exist_ok=True)
 
-    for i, data in enumerate(slice_data_list):
+    for data in slice_data_list:
+        i = data["index"]
+
         img = data['image']
         if img is None:
             print(f"Warning: slice image at index {i} is None, skipping.")
