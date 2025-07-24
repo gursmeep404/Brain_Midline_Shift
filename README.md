@@ -42,6 +42,14 @@ This is a CT slice from a patient with a midline shift:
 <p align="center">
   <img src="images/slice_093.png" width="250" height="200"/>
 </p>
-
 <p align="center"><sub>Ideal and actual midlines</sub></p>
 
+
+### Limitations:
+For some patients with midline shifts the scans show distortion in the shape of the ventricles. In that case the actual midline calculated would be erroneous since PCA would give the centre of mass of the data points which in this case would not be our coordinate. An example of that is the slice below which shows bleed that distorts the lateral ventricles. This problem can be solved through deep learning but in this case, we did not have enough data to train the model.
+
+
+<p align="center">
+  <img src="images/slice_093.png" width="400" height="300"/>
+</p>
+<p align="center"><sub>Ideal and actual midlines</sub></p>
