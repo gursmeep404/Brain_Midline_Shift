@@ -18,5 +18,26 @@ These are the steps I followed:
 - **Measurement:** Distance between the x coordinates found above gives the distance of midline which is then converted from pixels to mm which is how it is usually reported
 
 
+### Visualisation
+
+Following are the images of one slice as viewed on a 3D slicer
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="image 1.png" width="200"/><br/>
+      <sub>Axial Slice</sub>
+    </td>
+    <td align="center">
+      <img src="image 2.png" width="200"/><br/>
+      <sub>Slice form mask</sub>
+    </td>
+    <td align="center">
+      <img src="image 3.png" width="200"/><br/>
+      <sub>Original slice with mask overlay</sub>
+    </td>
+  </tr>
+</table>
+
 
 
