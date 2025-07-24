@@ -40,7 +40,7 @@ Following are the images of one slice as viewed on a 3D slicer
 This is a CT slice from a patient with a midline shift:
 
 <p align="center">
-  <img src="images/slice_093.png" width="400" height="200"/>
+  <img src="images/slice_093.png" width="250" height="200"/>
 </p>
 
 <p align="center"><sub>Ideal and actual midlines</sub></p>
