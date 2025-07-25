@@ -207,16 +207,25 @@ async def predict_from_dicom(zip_file: UploadFile = File(...)):
             actual_midline_path=actual_path,
             output_path=os.path.join(out_dir, "shifts.npz")
         )
-        logger.info(f"Midline shift = {avg_shift:.2f} mm")
+        result_text = (
+            f"No midline shift detected." if avg_shift <= 1.0 
+            else f"Midline shift detected: {avg_shift:.2f} mm"
+        )
+        logger.info(result_text)
 
         return {
             "ideal_slice_index": idx,
             "midline_shift_mm": float(avg_shift),
+            "result": result_text,
             "debug_images": {
                 "unregistered_input": "debug_output/unregistered_input.png",
                 "registered_output": "debug_output/registered_output.png"
             }
         }
+
+
+        
+        
 
     except Exception as e:
         tb = traceback.format_exc()
