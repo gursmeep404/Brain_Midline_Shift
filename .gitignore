@@ -16,3 +16,4 @@ uploads/
 inference_output/
 nifti_output/
 temp_uploads/
+__pycache__
