@@ -12,3 +12,7 @@ dicom_to_nifti_files/
 segmented/
 src/__pycache__
 final_testing/
+uploads/
+inference_output/
+nifti_output/
+temp_uploads/
